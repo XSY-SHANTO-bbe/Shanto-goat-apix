@@ -1,39 +1,30 @@
-import yts from "yt-search";
-import ytdl from "@distube/ytdl-core";
-
 export default async function handler(req, res) {
-  const name = req.query.name;
-  if (!name) {
-    return res.json({
-      status: "error",
-      message: "গানের নাম দিন!"
-    });
-  }
   try {
-    const search = await yts(name);
-    const video = search.videos[0];
-    if (!video) {
-      return res.json({
+    const { song } = req.query;  // query থেকে song নাও
+
+    // query চেক (খালি/না থাকলে error)
+    if (!song || song.trim() === "") {
+      return res.status(400).json({
         status: "error",
-        message: "গান খুঁজে পাওয়া যায়নি!"
+        message: "গানের নাম দিন!"
       });
     }
-    const info = await ytdl.getInfo(video.url);
-    const format = ytdl.chooseFormat(info.formats, {
-      filter: "audioonly",
-      quality: "highestaudio"
-    });
-    res.json({
+
+    // এখানে success logic (এখন dummy, পরে real API add করতে পারো)
+    const cleanedSong = song.trim();
+
+    res.status(200).json({
       status: "success",
-      title: video.title,
-      duration: video.timestamp,
-      thumbnail: video.thumbnail,
-      downloadUrl: format.url
+      song: cleanedSong,
+      message: `${cleanedSong} এর জন্য রেসপন্স পাওয়া গেছে! 🎵 (টেস্ট মোড)`,
+      lyrics: `এটা একটা টেস্ট লিরিক্স...\nVerse 1: ${cleanedSong}...\nChorus: লাভ ইউ...`,
+      // যদি real lyrics API চাও, পরে add করবো (যেমন lyrics.ovh বা অন্য)
     });
+
   } catch (err) {
-    res.json({
+    res.status(500).json({
       status: "error",
-      message: "সমস্যা হয়েছে!"
+      message: "সার্ভারে সমস্যা: " + err.message
     });
   }
 }
