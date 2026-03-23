@@ -1,50 +1,45 @@
-import ytdl from 'ytdl-core';
 import ytSearch from 'yt-search';
+import ytdl from 'ytdl-core';
 
 export default async function handler(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+
   try {
     const { song } = req.query;
 
-    if (!song || song.trim() === '') {
-      return res.status(400).json({
-        status: 'error',
-        message: 'গানের নাম দিন!'
-      });
+    if (!song) {
+      return res.status(400).json({ status: 'error', message: 'গানের নাম দিন!' });
     }
 
-    // YouTube search
-    const searchResults = await ytSearch(song);
-    const video = searchResults.videos[0];  // প্রথম রেজাল্ট নাও
+    const trimmedSong = song.trim();
+
+    // Step 1: Search
+    const searchResults = await ytSearch(trimmedSong);
+    const video = searchResults.videos[0];
 
     if (!video) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'গান পাওয়া যায়নি'
-      });
+      return res.status(404).json({ status: 'error', message: 'গান পাওয়া যায়নি' });
     }
 
-    // Video info + audio format
-    const info = await ytdl.getInfo(video.url);
-    const audioFormat = ytdl.chooseFormat(info.formats, {
-      filter: 'audioonly',
-      quality: 'highestaudio'
-    });
+    // Step 2: Get info (with timeout protection)
+    const info = await ytdl.getInfo(video.url, { requestOptions: { timeout: 10000 } });
 
-    res.status(200).json({
+    const audio = ytdl.chooseFormat(info.formats, { filter: 'audioonly' });
+
+    res.json({
       status: 'success',
       title: video.title,
-      duration: video.duration.timestamp,
-      views: video.views,
-      thumbnail: video.thumbnail,
-      downloadUrl: audioFormat.url,  // direct audio stream link
-      message: `${video.title} পাওয়া গেছে! লিঙ্ক থেকে শুনো/ডাউনলোড করো`
+      url: video.url,
+      audioStreamUrl: audio.url || 'No audio found',
+      message: 'গান পাওয়া গেছে!'
     });
 
   } catch (err) {
-    console.error(err);
+    console.error('API Error:', err.message, err.stack);
     res.status(500).json({
       status: 'error',
-      message: 'সার্ভার এরর: ' + (err.message || 'অজানা সমস্যা')
+      message: 'API crash: ' + err.message,
+      details: err.stack ? err.stack.split('\n')[0] : 'No stack'
     });
   }
 }
