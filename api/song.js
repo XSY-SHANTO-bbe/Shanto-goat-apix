@@ -1,32 +1,50 @@
-import ytdl from 'ytdl-core';  // npm install ytdl-core দাও package.json-এ dependencies-এ add করে push
-import axios from 'axios';
+import ytdl from 'ytdl-core';
+import ytSearch from 'yt-search';
 
 export default async function handler(req, res) {
-  const { song } = req.query;
-
-  if (!song) {
-    return res.status(400).json({ status: "error", message: "গানের নাম দিন!" });
-  }
-
   try {
-    // YouTube search (ফ্রি API বা simple search)
-    const searchRes = await axios.get(`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`);
-    // parse first video link (simple, কিন্তু real-এ yt-search বা অন্য use করো)
-    // অথবা dummy video ID
-    const videoId = 'dQw4w9WgXcQ';  // test-এর জন্য Rick Roll, real-এ search থেকে নাও
+    const { song } = req.query;
 
-    const info = await ytdl.getInfo(`https://www.youtube.com/watch?v=${videoId}`);
-    const audioFormat = ytdl.chooseFormat(info.formats, { filter: 'audioonly', quality: 'highestaudio' });
+    if (!song || song.trim() === '') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'গানের নাম দিন!'
+      });
+    }
 
-    res.json({
-      status: "success",
-      title: info.videoDetails.title,
-      duration: info.videoDetails.lengthSeconds,
-      downloadUrl: audioFormat.url,  // direct MP3 stream link
-      message: "গান পাওয়া গেছে! লিঙ্ক থেকে download করো"
+    // YouTube search
+    const searchResults = await ytSearch(song);
+    const video = searchResults.videos[0];  // প্রথম রেজাল্ট নাও
+
+    if (!video) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'গান পাওয়া যায়নি'
+      });
+    }
+
+    // Video info + audio format
+    const info = await ytdl.getInfo(video.url);
+    const audioFormat = ytdl.chooseFormat(info.formats, {
+      filter: 'audioonly',
+      quality: 'highestaudio'
+    });
+
+    res.status(200).json({
+      status: 'success',
+      title: video.title,
+      duration: video.duration.timestamp,
+      views: video.views,
+      thumbnail: video.thumbnail,
+      downloadUrl: audioFormat.url,  // direct audio stream link
+      message: `${video.title} পাওয়া গেছে! লিঙ্ক থেকে শুনো/ডাউনলোড করো`
     });
 
   } catch (err) {
-    res.status(500).json({ status: "error", message: err.message });
+    console.error(err);
+    res.status(500).json({
+      status: 'error',
+      message: 'সার্ভার এরর: ' + (err.message || 'অজানা সমস্যা')
+    });
   }
 }
