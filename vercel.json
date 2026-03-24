@@ -13,7 +13,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/api/webhook.js"
+      "dest": "/api/song.js"
     }
   ]
 }
