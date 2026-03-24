@@ -7,7 +7,13 @@
     }
   ],
   "routes": [
-    { "source": "/song", "destination": "/api/song.js" },
-    { "source": "/(.*)", "destination": "/api/webhook.js" }
+    {
+      "src": "/song",
+      "dest": "/api/song.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/webhook.js"
+    }
   ]
 }
