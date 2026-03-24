@@ -1,45 +1,51 @@
-import ytSearch from 'yt-search';
+// api/song.js
 import ytdl from 'ytdl-core';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
+
+ffmpeg.setFfmpegPath(ffmpegStatic); // Vercel-এ ffmpeg binary লোড করার জন্য
 
 export default async function handler(req, res) {
-  res.setHeader('Content-Type', 'application/json');
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Only GET allowed' });
+  }
+
+  const { url, query } = req.query;
+
+  // যদি query দিয়ে song name দাও (যেমন: "Tumi Ashbe Bole")
+  let videoUrl = url;
+  if (!videoUrl && query) {
+    // Simple search (আরও ভালো করতে youtube-search-api যোগ করতে পারো)
+    console.log('Search not implemented yet, please send direct YouTube URL');
+    return res.status(400).json({ error: 'Send YouTube URL' });
+  }
+
+  if (!ytdl.validateURL(videoUrl)) {
+    return res.status(400).json({ error: 'Invalid YouTube URL' });
+  }
 
   try {
-    const { song } = req.query;
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Disposition', `attachment; filename="song.mp3"`);
 
-    if (!song) {
-      return res.status(400).json({ status: 'error', message: 'গানের নাম দিন!' });
-    }
-
-    const trimmedSong = song.trim();
-
-    // Step 1: Search
-    const searchResults = await ytSearch(trimmedSong);
-    const video = searchResults.videos[0];
-
-    if (!video) {
-      return res.status(404).json({ status: 'error', message: 'গান পাওয়া যায়নি' });
-    }
-
-    // Step 2: Get info (with timeout protection)
-    const info = await ytdl.getInfo(video.url, { requestOptions: { timeout: 10000 } });
-
-    const audio = ytdl.chooseFormat(info.formats, { filter: 'audioonly' });
-
-    res.json({
-      status: 'success',
-      title: video.title,
-      url: video.url,
-      audioStreamUrl: audio.url || 'No audio found',
-      message: 'গান পাওয়া গেছে!'
+    // Audio only stream
+    const audioStream = ytdl(videoUrl, {
+      filter: 'audioonly',
+      quality: 'highestaudio',
     });
 
-  } catch (err) {
-    console.error('API Error:', err.message, err.stack);
-    res.status(500).json({
-      status: 'error',
-      message: 'API crash: ' + err.message,
-      details: err.stack ? err.stack.split('\n')[0] : 'No stack'
-    });
+    // MP3 তে convert করে stream করে দাও (Vercel-এ pipe করে পাঠানো হয়)
+    ffmpeg(audioStream)
+      .audioBitrate(128)          // 128kbps ভালো quality
+      .format('mp3')
+      .on('error', (err) => {
+        console.error('FFmpeg error:', err);
+        if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
+      })
+      .pipe(res);                 // সরাসরি user/bot-কে পাঠিয়ে দেয়
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
   }
 }
