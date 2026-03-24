@@ -1,5 +1,21 @@
 {
-  "name": "shanto",
+  "name": "shanto-goat-apix",
   "version": "1.0.0",
-  "type": "module"
+  "description": "Shanto Goat APIx - YouTube to MP3 API + Messenger Goat Bot Webhook",
+  "main": "api/webhook.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Vercel handles build automatically'",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "ytdl-core": "^4.11.5",
+    "fluent-ffmpeg": "^2.1.3",
+    "ffmpeg-static": "^5.2.0",
+    "@vercel/node": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
 }
