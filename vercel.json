@@ -1,6 +1,13 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/webhook" },   // তোমার আগের webhook
-    { "source": "/song", "destination": "/api/song" }      // নতুন song API
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    { "source": "/song", "destination": "/api/song.js" },
+    { "source": "/(.*)", "destination": "/api/webhook.js" }
   ]
 }
